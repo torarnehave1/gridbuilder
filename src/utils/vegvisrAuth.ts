@@ -72,13 +72,9 @@ export async function sendMagicLink(
  */
 export async function verifyAndAuthenticateMagicToken(magicToken: string): Promise<VegvisrUser> {
   // Step a: Verify token
-  let verifyRes = await fetch(
+  const verifyRes = await fetch(
     `https://cookie.vegvisr.org/login/magic/verify?token=${encodeURIComponent(magicToken)}`
-  ).catch(() => null);
-
-  if (!verifyRes || !verifyRes.ok) {
-    verifyRes = await fetch(`/api/auth/proxy/verify-magic?token=${encodeURIComponent(magicToken)}`);
-  }
+  );
 
   if (!verifyRes.ok) {
     throw new Error('Magic token verification request failed.');
@@ -91,49 +87,28 @@ export async function verifyAndAuthenticateMagicToken(magicToken: string): Promi
 
   const email = verifyData.email;
 
-  // Step b: Fetch permanent auth token & user ID
-  let tokenRes = await fetch('https://api.vegvisr.org/get-auth-token', {
-    method: 'GET',
-    headers: { 'X-Email': email },
-  }).catch(() => null);
-
-  if (!tokenRes || !tokenRes.ok) {
-    tokenRes = await fetch(`/api/auth/proxy/get-auth-token?email=${encodeURIComponent(email)}`, {
-      method: 'GET',
-      headers: { 'X-Email': email },
-    });
-  }
-
-  if (!tokenRes.ok) {
-    throw new Error('Failed to fetch user authentication token.');
-  }
-
-  const tokenData = await tokenRes.json();
-  const user_id = tokenData.user_id || 'unknown-id';
-  const emailVerificationToken = tokenData.emailVerificationToken || '';
-
-  // Step c: Fetch user role
+  // Step b: Fetch role + user data from dashboard.vegvisr.org (same endpoints the Contacts app uses)
   let role = 'user';
+  let user_id = email;
+  let emailVerificationToken = '';
+
   try {
-    let roleRes = await fetch(
-      `https://dashboard.vegvisr.org/get-role?email=${encodeURIComponent(email)}`
-    ).catch(() => null);
+    const roleRes = await fetch(`https://dashboard.vegvisr.org/get-role?email=${encodeURIComponent(email)}`);
+    if (!roleRes.ok) throw new Error(`User role unavailable (status: ${roleRes.status})`);
+    const roleData = await roleRes.json();
+    if (!roleData.role) throw new Error('Unable to retrieve user role.');
+    role = roleData.role;
 
-    if (!roleRes || !roleRes.ok) {
-      roleRes = await fetch(`/api/auth/proxy/get-role?email=${encodeURIComponent(email)}`);
-    }
-
-    if (roleRes && roleRes.ok) {
-      const roleData = await roleRes.json();
-      if (roleData.role) {
-        role = roleData.role;
-      }
-    }
+    const userDataRes = await fetch(`https://dashboard.vegvisr.org/userdata?email=${encodeURIComponent(email)}`);
+    if (!userDataRes.ok) throw new Error(`Unable to fetch user data (status: ${userDataRes.status})`);
+    const userData = await userDataRes.json();
+    user_id = userData.user_id || email;
+    emailVerificationToken = userData.emailVerificationToken || '';
   } catch (err) {
-    console.warn('Could not fetch role, defaulting to "user"', err);
+    console.warn('Could not fetch full user context, defaulting to basic user record', err);
   }
 
-  // Step d: Construct user object
+  // Step c: Construct user object
   const user: VegvisrUser = {
     email,
     role,
