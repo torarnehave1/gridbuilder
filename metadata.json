@@ -1,0 +1,6 @@
+{
+  "name": "HTML Builder",
+  "description": "Visual grid and slot HTML page builder with drag-and-drop elements, live markdown editing, themes, and code export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
