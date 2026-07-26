@@ -150,7 +150,7 @@ export const GridBlock: React.FC<GridBlockProps> = ({
       <div className="relative z-1 flex items-center justify-between mb-3 text-xs opacity-80">
         <div className="flex items-center gap-1.5 font-semibold" style={{ color: 'var(--text)' }}>
           <GridIcon className="w-3.5 h-3.5" style={{ color: 'var(--accent)' }} />
-          <span style={{ fontFamily: 'var(--font-display)' }}>{grid.size} × {grid.size} Grid Block</span>
+          <span style={{ fontFamily: 'var(--font-display)' }}>{grid.rows || grid.size} × {grid.cols || grid.size} Grid Block</span>
           <span className="text-[10px] opacity-60 font-normal">
             ({grid.cells.length} cells)
           </span>

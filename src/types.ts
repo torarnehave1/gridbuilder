@@ -111,6 +111,7 @@ export type AppMode = 'editor' | 'view' | 'portfolio';
 export interface DragItemPayload {
   kind: 'size' | 'node';
   n?: number;
+  rows?: number; // explicit row count for non-square grid tiles (e.g. 1 x N row layouts)
   nodeId?: string;
   label: string;
 }

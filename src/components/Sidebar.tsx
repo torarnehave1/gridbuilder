@@ -18,15 +18,18 @@ interface SidebarProps {
   nodes: NodeItem[];
   onAddCustomNode: (node: NodeItem) => void;
   onSelectNodeToInsert?: (nodeId: string) => void;
-  onAddGridToActiveSlot?: (size: number) => void;
+  onAddGridToActiveSlot?: (size: number, rows?: number) => void;
   onStartDrag: (payload: DragItemPayload, e: React.PointerEvent) => void;
 }
 
 const GRID_SIZES = [
-  { size: 1, label: '1 × 1', desc: 'Single full card' },
-  { size: 2, label: '2 × 2', desc: '2 col grid (4 cells)' },
-  { size: 3, label: '3 × 3', desc: '3 col grid (9 cells)' },
-  { size: 4, label: '4 × 4', desc: '4 col grid (16 cells)' },
+  { id: '1x1', size: 1, label: '1 × 1', desc: 'Single full card' },
+  { id: '2x2', size: 2, label: '2 × 2', desc: '2 col grid (4 cells)' },
+  { id: '3x3', size: 3, label: '3 × 3', desc: '3 col grid (9 cells)' },
+  { id: '4x4', size: 4, label: '4 × 4', desc: '4 col grid (16 cells)' },
+  { id: '1x2', size: 2, rows: 1, label: '1 × 2', desc: '1 row, 2 cols (2 cells)' },
+  { id: '1x3', size: 3, rows: 1, label: '1 × 3', desc: '1 row, 3 cols (3 cells)' },
+  { id: '1x4', size: 4, rows: 1, label: '1 × 4', desc: '1 row, 4 cols (4 cells)' },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -157,18 +160,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="grid grid-cols-2 gap-2">
             {GRID_SIZES.map((item) => (
               <div
-                key={item.size}
+                key={item.id}
                 onPointerDown={(e) =>
                   onStartDrag(
                     {
                       kind: 'size',
                       n: item.size,
+                      rows: item.rows,
                       label: `${item.label} Grid`,
                     },
                     e
                   )
                 }
-                onClick={() => onAddGridToActiveSlot?.(item.size)}
+                onClick={() => onAddGridToActiveSlot?.(item.size, item.rows)}
                 className="group relative cursor-grab active:cursor-grabbing p-2.5 rounded border text-center transition-all select-none touch-none shadow-2xs hover:opacity-90"
                 style={{
                   backgroundColor: 'rgba(0,0,0,0.05)',

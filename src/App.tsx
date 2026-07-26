@@ -382,7 +382,7 @@ export default function App() {
           const slotEl = element.closest('[data-slot-id]') as HTMLElement;
           if (slotEl) {
             const slotId = slotEl.dataset.slotId;
-            handleAddGridBlockToSlot(slotId!, dragState.payload.n);
+            handleAddGridBlockToSlot(slotId!, dragState.payload.n, dragState.payload.rows);
           }
         }
 
@@ -572,10 +572,11 @@ export default function App() {
   };
 
   // Grid Block Actions
-  const handleAddGridBlockToSlot = (slotId: string, size: number) => {
+  const handleAddGridBlockToSlot = (slotId: string, size: number, rows?: number) => {
     recordHistory();
+    const numRows = rows ?? size;
     const newGridCells: GridCellData[] = Array.from(
-      { length: size * size },
+      { length: size * numRows },
       (_, idx) => ({
         id: `cell-${Date.now()}-${idx}`,
         nodeId: null,
@@ -587,6 +588,7 @@ export default function App() {
       id: `grid-${Date.now()}`,
       size,
       cols: size,
+      rows: numRows,
       cells: newGridCells,
     };
 
@@ -1098,9 +1100,9 @@ export default function App() {
               nodes={nodes}
               onAddCustomNode={handleAddCustomNode}
               onStartDrag={handleStartDrag}
-              onAddGridToActiveSlot={(size) => {
+              onAddGridToActiveSlot={(size, rows) => {
                 if (slots.length > 0) {
-                  handleAddGridBlockToSlot(slots[slots.length - 1].id, size);
+                  handleAddGridBlockToSlot(slots[slots.length - 1].id, size, rows);
                 } else {
                   handleAddSlot();
                 }
