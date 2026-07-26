@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { Mail, Sparkles, ArrowRight, Shield, AlertCircle, Loader2 } from 'lucide-react';
+import { Mail, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { sendMagicLink } from '../utils/vegvisrAuth';
 
 export const Login: React.FC = () => {
@@ -9,7 +9,7 @@ export const Login: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const { devBypass, authError } = useStore();
+  const { authError } = useStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,26 +107,6 @@ export const Login: React.FC = () => {
             </button>
           </form>
         )}
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-800"></div>
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-slate-900 px-2 text-slate-500 font-medium">
-              Development Only
-            </span>
-          </div>
-        </div>
-
-        <button
-          onClick={devBypass}
-          type="button"
-          className="w-full bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 text-slate-300 font-medium py-2 px-4 rounded-xl text-xs transition-colors flex items-center justify-center space-x-2 cursor-pointer"
-        >
-          <Shield className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Bypass Login (Dev)</span>
-        </button>
 
         <p className="text-center text-[10px] text-slate-500">
           By signing in, you agree to our Terms of Service and Privacy Policy.

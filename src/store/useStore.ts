@@ -3,7 +3,6 @@ import { VegvisrUser } from '../types';
 import {
   getUserFromLocalStorage,
   saveUserToLocalStorage,
-  getDevBypassUser,
   logoutVegvisrUser,
   verifyAndAuthenticateMagicToken,
 } from '../utils/vegvisrAuth';
@@ -18,7 +17,6 @@ export interface AuthState {
   // Actions
   login: (user: VegvisrUser, token?: string) => void;
   logout: () => void;
-  devBypass: () => void;
   checkMagicLinkOnMount: () => Promise<void>;
   setAuthError: (err: string | null) => void;
 }
@@ -51,17 +49,6 @@ export const useStore = create<AuthState>((set) => ({
       user: null,
       token: null,
       isAuthenticated: false,
-      authError: null,
-    });
-  },
-
-  devBypass: () => {
-    const devUser = getDevBypassUser();
-    saveUserToLocalStorage(devUser);
-    set({
-      user: devUser,
-      token: devUser.emailVerificationToken,
-      isAuthenticated: true,
       authError: null,
     });
   },

@@ -150,19 +150,7 @@ export function getUserFromLocalStorage(): VegvisrUser | null {
 }
 
 /**
- * 4. Dev Bypass Mode User Object
- */
-export function getDevBypassUser(): VegvisrUser {
-  return {
-    email: 'dev@vegvisr.org',
-    role: 'admin',
-    user_id: 'dev-user-id',
-    emailVerificationToken: 'b1ca2967e8165ec02fdf039d9e916af4005f7388',
-  };
-}
-
-/**
- * 5. Logout User
+ * 4. Logout User
  */
 export function logoutVegvisrUser() {
   localStorage.removeItem('user');

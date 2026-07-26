@@ -9,7 +9,6 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  Terminal,
 } from 'lucide-react';
 import { VegvisrUser } from '../types';
 import { sendMagicLink } from '../utils/vegvisrAuth';
@@ -32,7 +31,7 @@ export const VegvisrAuthModal: React.FC<VegvisrAuthModalProps> = ({
     null
   );
 
-  const { user: currentUser, logout, devBypass } = useStore();
+  const { user: currentUser, logout } = useStore();
 
   if (!isOpen) return null;
 
@@ -56,14 +55,6 @@ export const VegvisrAuthModal: React.FC<VegvisrAuthModalProps> = ({
     } else {
       setFeedback({ type: 'error', text: res.message });
     }
-  };
-
-  const handleDevBypass = () => {
-    devBypass();
-    setFeedback({ type: 'success', text: 'Logged in using Dev Bypass Mode!' });
-    setTimeout(() => {
-      onClose();
-    }, 1000);
   };
 
   const handleLogout = () => {
@@ -220,21 +211,6 @@ export const VegvisrAuthModal: React.FC<VegvisrAuthModalProps> = ({
                 )}
               </button>
             </form>
-
-            <div
-              className="pt-4 border-t flex flex-col items-center gap-2 text-center"
-              style={{ borderColor: 'var(--card-border, rgba(255,255,255,0.1))' }}
-            >
-              <div className="text-[11px] opacity-60">Developer Quick Testing:</div>
-              <button
-                type="button"
-                onClick={handleDevBypass}
-                className="w-full py-2 rounded-xl border border-dashed border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
-              >
-                <Terminal className="w-3.5 h-3.5 text-amber-400" />
-                <span>Bypass Login (Dev)</span>
-              </button>
-            </div>
           </div>
         )}
       </div>
