@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { NodeItem, SlotData, Theme, ActiveGraphContext } from '../types';
 import { saveGraphWithHistory } from '../utils/vegvisrApi';
+import { vegvisrFetch } from '../utils/vegvisrClient';
 import { ensureUUID, isValidUUID } from '../utils/uuidUtils';
 import { ConfirmModal } from './ConfirmModal';
 
@@ -78,7 +79,7 @@ export const VegvisrModal: React.FC<VegvisrModalProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/vegvisr/knowgraphs');
+      const res = await vegvisrFetch('/getknowgraphs');
       const data = await res.json();
 
       if (!res.ok) {
@@ -134,7 +135,7 @@ export const VegvisrModal: React.FC<VegvisrModalProps> = ({
     setExpandedGraphId(graphId);
     setLoadingNodes(true);
     try {
-      const res = await fetch(`/api/vegvisr/proxy/getknowgraph?id=${encodeURIComponent(graphId)}`);
+      const res = await vegvisrFetch(`/getknowgraph?id=${encodeURIComponent(graphId)}`);
       const data = await res.json();
       setExpandedGraphData(data);
     } catch (e) {
@@ -460,8 +461,8 @@ export const VegvisrModal: React.FC<VegvisrModalProps> = ({
                                   let gData = isExpanded ? expandedGraphData : null;
                                   if (!gData) {
                                     try {
-                                      const res = await fetch(
-                                        `/api/vegvisr/proxy/getknowgraph?id=${encodeURIComponent(
+                                      const res = await vegvisrFetch(
+                                        `/getknowgraph?id=${encodeURIComponent(
                                           graph.id || graphId
                                         )}`
                                       );

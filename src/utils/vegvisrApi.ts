@@ -1,5 +1,6 @@
 import { KnowGraphNode, KnowGraphEdge, SlotData, NodeItem, Theme } from '../types';
 import { ensureUUID, isValidUUID } from './uuidUtils';
+import { vegvisrFetch } from './vegvisrClient';
 
 export interface PatchNodeParams {
   graphId: string;
@@ -29,8 +30,8 @@ export async function patchVegvisrNode(params: PatchNodeParams): Promise<{
   // If expectedVersion is not provided, fetch current graph metadata
   if (versionToUse === undefined || versionToUse === null) {
     try {
-      const graphRes = await fetch(
-        `/api/vegvisr/proxy/getknowgraph?id=${encodeURIComponent(targetGraphId)}`
+      const graphRes = await vegvisrFetch(
+        `/getknowgraph?id=${encodeURIComponent(targetGraphId)}`
       );
       const graphData = await graphRes.json();
       if (
@@ -62,7 +63,7 @@ export async function patchVegvisrNode(params: PatchNodeParams): Promise<{
   };
 
   try {
-    const patchResponse = await fetch('/api/vegvisr/proxy/patchNode', {
+    const patchResponse = await vegvisrFetch('/patchNode', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -100,7 +101,7 @@ export async function patchVegvisrNode(params: PatchNodeParams): Promise<{
   };
 
   try {
-    const addResponse = await fetch('/api/vegvisr/proxy/addNode', {
+    const addResponse = await vegvisrFetch('/addNode', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -123,8 +124,8 @@ export async function patchVegvisrNode(params: PatchNodeParams): Promise<{
     const addErrMsg = (addData.error || addData.message || '').toString().toLowerCase();
     if (addErrMsg.includes('version')) {
       try {
-        const freshRes = await fetch(
-          `/api/vegvisr/proxy/getknowgraph?id=${encodeURIComponent(targetGraphId)}`
+        const freshRes = await vegvisrFetch(
+          `/getknowgraph?id=${encodeURIComponent(targetGraphId)}`
         );
         const freshData = await freshRes.json();
         const freshVersion =
@@ -132,7 +133,7 @@ export async function patchVegvisrNode(params: PatchNodeParams): Promise<{
 
         addPayload.expectedVersion = freshVersion;
 
-        const retryAddResponse = await fetch('/api/vegvisr/proxy/addNode', {
+        const retryAddResponse = await vegvisrFetch('/addNode', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(addPayload),
@@ -286,7 +287,7 @@ export async function saveGraphWithHistory(params: SaveGraphParams): Promise<{
     },
   };
 
-  const response = await fetch('/api/vegvisr/proxy/saveGraphWithHistory', {
+  const response = await vegvisrFetch('/saveGraphWithHistory', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
