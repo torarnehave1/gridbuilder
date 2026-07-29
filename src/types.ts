@@ -109,11 +109,13 @@ export interface ActiveGraphContext {
 export type AppMode = 'editor' | 'view' | 'portfolio';
 
 export interface DragItemPayload {
-  kind: 'size' | 'node';
+  kind: 'size' | 'node' | 'cell';
   n?: number;
   rows?: number; // explicit row count for non-square grid tiles (e.g. 1 x N row layouts)
   nodeId?: string;
   label: string;
+  // kind 'cell': where the dragged card currently lives, so the drop can move it
+  source?: { slotId: string; gridId: string; cellIndex: number };
 }
 
 export interface KnowGraphMetadata {

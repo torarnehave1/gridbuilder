@@ -33,6 +33,12 @@ import {
 } from './types';
 import { saveGraphWithHistory } from './utils/vegvisrApi';
 import { ensureUUID } from './utils/uuidUtils';
+import {
+  resolveCellAddress,
+  findCell,
+  isSameCell,
+  swapCellContent,
+} from './utils/cellDragUtils';
 import { resolveMedia, renderMediaHtml } from './utils/mediaUtils';
 import {
   verifyAndAuthenticateMagicToken,
@@ -338,6 +344,38 @@ export default function App() {
     }
   }, [activeTheme]);
 
+  // Start a card drag from the grip handle inside any cell toolbar.
+  // The handle carries no callbacks — the source address is read from the same
+  // data attributes the drop side already uses.
+  useEffect(() => {
+    if (mode !== 'editor') return;
+
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as Element | null;
+      const handle = target?.closest('[data-cell-drag-handle]');
+      if (!handle) return;
+
+      const source = resolveCellAddress(handle);
+      if (!source) return;
+
+      const cell = findCell(slots, source);
+      const label =
+        nodes.find((n) => n.id === cell?.nodeId)?.label ||
+        cell?.customMarkdown?.match(/^#+\s*(.+)$/m)?.[1] ||
+        'Card';
+
+      e.preventDefault();
+      setDragState({
+        payload: { kind: 'cell', label, source },
+        x: e.clientX,
+        y: e.clientY,
+      });
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    return () => window.removeEventListener('pointerdown', handlePointerDown);
+  }, [mode, slots, nodes]);
+
   // Pointer drag listeners for global element dropping
   useEffect(() => {
     if (!dragState) return;
@@ -389,29 +427,26 @@ export default function App() {
 
         // Drop Content Node onto a Grid Cell
         if (dragState.payload.kind === 'node' && dragState.payload.nodeId) {
-          const cellEl = element.closest('[data-cell-index]') as HTMLElement;
-          const slotEl = element.closest('[data-slot-id]') as HTMLElement;
+          const target = resolveCellAddress(element);
 
-          if (cellEl && slotEl) {
-            const cellIndex = parseInt(cellEl.dataset.cellIndex || '0', 10);
-            const slotId = slotEl.dataset.slotId;
-
+          if (target) {
             recordHistory();
-            // Find grid block index inside slot
             setSlots((prevSlots) =>
               prevSlots.map((s) => {
-                if (s.id !== slotId) return s;
+                if (s.id !== target.slotId) return s;
                 return {
                   ...s,
                   grids: s.grids.map((g) => {
-                    // Update cell in the target grid
+                    // Only the grid actually dropped on — cell indexes repeat
+                    // across grid blocks inside the same slot.
+                    if (g.id !== target.gridId) return g;
                     const updatedCells = [...g.cells];
-                    if (updatedCells[cellIndex]) {
+                    if (updatedCells[target.cellIndex]) {
                       const targetNode = nodes.find(
                         (n) => n.id === dragState.payload.nodeId
                       );
-                      updatedCells[cellIndex] = {
-                        ...updatedCells[cellIndex],
+                      updatedCells[target.cellIndex] = {
+                        ...updatedCells[target.cellIndex],
                         nodeId: dragState.payload.nodeId!,
                         customMarkdown: targetNode?.info,
                         graphId: targetNode?.graphId,
@@ -424,6 +459,17 @@ export default function App() {
                 };
               })
             );
+          }
+        }
+
+        // Move a card from one grid cell to another (swaps with the target)
+        if (dragState.payload.kind === 'cell' && dragState.payload.source) {
+          const source = dragState.payload.source;
+          const target = resolveCellAddress(element);
+
+          if (target && !isSameCell(target, source)) {
+            recordHistory();
+            setSlots((prevSlots) => swapCellContent(prevSlots, source, target));
           }
         }
       }

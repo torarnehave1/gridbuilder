@@ -120,6 +120,7 @@ export const GridBlock: React.FC<GridBlockProps> = ({
 
   return (
     <div
+      data-grid-id={grid.id}
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleGridDrop}
       className={`relative group/block border rounded-2xl p-4 my-4 transition-all backdrop-blur-sm overflow-hidden ${

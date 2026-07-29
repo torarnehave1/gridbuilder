@@ -14,6 +14,7 @@ import {
   Save,
   Maximize2,
   Image as ImageIcon,
+  GripVertical,
 } from 'lucide-react';
 import { BgImageModal } from './BgImageModal';
 import { extractImageFromDrop } from '../utils/imageDropUtils';
@@ -772,6 +773,19 @@ export const CellComponent: React.FC<CellComponentProps> = ({
           color: 'var(--text)',
         }}
       >
+        {/* Drag grip — App.tsx picks this up via a global pointerdown listener
+            and resolves the source cell from the surrounding data attributes. */}
+        <button
+          type="button"
+          data-cell-drag-handle
+          title="Drag this card into another cell"
+          aria-label="Move this card"
+          className="p-0.5 rounded shrink-0 cursor-grab active:cursor-grabbing opacity-50 hover:opacity-100 transition-opacity"
+          style={{ touchAction: 'none' }}
+        >
+          <GripVertical className="w-3.5 h-3.5" />
+        </button>
+
         {isImportedGraphNode && (
           <div className="flex items-center gap-1">
             <span
