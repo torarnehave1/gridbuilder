@@ -13,6 +13,10 @@ interface ConfirmModalProps {
   inputValue?: string;
   onInputChange?: (value: string) => void;
   inputLabel?: string;
+  // Optional second action, e.g. "Update Current Graph" alongside "Create
+  // New Graph" — rendered between Cancel and the primary confirm button.
+  secondaryConfirmLabel?: string;
+  onSecondaryConfirm?: () => void;
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -27,6 +31,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   inputValue,
   onInputChange,
   inputLabel,
+  secondaryConfirmLabel,
+  onSecondaryConfirm,
 }) => {
   if (!isOpen) return null;
 
@@ -98,6 +104,15 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           >
             {cancelLabel}
           </button>
+          {onSecondaryConfirm && (
+            <button
+              id="btn-secondary-confirm-save"
+              onClick={onSecondaryConfirm}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-100 bg-slate-700 hover:bg-slate-600 border border-slate-600 flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <span>{secondaryConfirmLabel}</span>
+            </button>
+          )}
           <button
             id="btn-confirm-save"
             onClick={onConfirm}

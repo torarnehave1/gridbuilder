@@ -178,6 +178,8 @@ export default function App() {
     inputValue?: string;
     onInputChange?: (value: string) => void;
     inputLabel?: string;
+    secondaryConfirmLabel?: string;
+    onSecondaryConfirm?: () => void;
   } | null>(null);
 
   // A banner carrying a Switch action must stay until clicked; plain
@@ -1001,17 +1003,55 @@ export default function App() {
   // Saving the LAYOUT always creates a brand-new graph — it never overwrites
   // whichever graph happens to be active. Per-node content edits (patchNode,
   // in CellComponent) are a separate, unaffected path that still targets a
-  // node's own existing graph. Switching the canvas onto the new graph (and
-  // thereby moving future per-node syncs onto it) is a distinct, explicit
-  // opt-in action offered via the success banner below — never automatic.
-  const executeQuickSave = async (newGraphTitle: string) => {
+  // node's own existing graph. Switching the canvas onto a newly-created
+  // graph (and thereby moving future per-node syncs onto it) is a distinct,
+  // explicit opt-in action offered via the success banner below — never
+  // automatic. Updating the current graph in place, by contrast, rebinds
+  // immediately: the user explicitly chose to make that graph authoritative
+  // for this layout, so there's no ambiguity left to defer.
+  const rebindCellsAndNodesToGraph = (
+    cellBindings: { slotId: string; gridId: string; cellId: string; nodeId: string }[],
+    newGraphId: string,
+    newVersion: number
+  ) => {
+    setSlots((prevSlots) =>
+      prevSlots.map((s) => ({
+        ...s,
+        grids: s.grids.map((g) => ({
+          ...g,
+          cells: g.cells.map((c) => {
+            const binding = cellBindings.find(
+              (b) => b.slotId === s.id && b.gridId === g.id && b.cellId === c.id
+            );
+            if (!binding) return c;
+            return {
+              ...c,
+              graphId: newGraphId,
+              sourceNodeId: binding.nodeId,
+              expectedVersion: newVersion,
+            };
+          }),
+        })),
+      }))
+    );
+    setNodes((prevNodes) =>
+      prevNodes.map((n) => {
+        const binding = cellBindings.find((b) => b.nodeId === n.id || b.nodeId === n.sourceNodeId);
+        if (!binding) return n;
+        return { ...n, graphId: newGraphId, sourceNodeId: binding.nodeId, expectedVersion: newVersion };
+      })
+    );
+  };
+
+  const executeQuickSave = async (options: { title: string; targetGraphId?: string }) => {
     if (!activeGraph) return;
     setIsSavingQuickGraph(true);
     setSaveStatusBanner(null);
+    const isUpdateInPlace = !!options.targetGraphId;
     try {
       const res = await saveGraphWithHistory({
-        id: undefined, // always mint a fresh UUID — never reuse activeGraph.id
-        title: newGraphTitle,
+        id: options.targetGraphId, // undefined => always mints a fresh UUID
+        title: options.title,
         slots,
         nodes,
         activeTheme,
@@ -1019,48 +1059,29 @@ export default function App() {
         override: true,
       });
 
-      setSaveStatusBanner({
-        type: 'success',
-        text: `Layout saved as new graph '${newGraphTitle}' (v${res.newVersion ?? 0}).`,
-        action: {
-          label: 'Switch to this graph',
-          onClick: () => {
-            setActiveGraph({ id: res.id, title: newGraphTitle, version: res.newVersion ?? 0 });
-            setSlots((prevSlots) =>
-              prevSlots.map((s) => ({
-                ...s,
-                grids: s.grids.map((g) => ({
-                  ...g,
-                  cells: g.cells.map((c) => {
-                    const binding = res.cellBindings.find(
-                      (b) => b.slotId === s.id && b.gridId === g.id && b.cellId === c.id
-                    );
-                    if (!binding) return c;
-                    return {
-                      ...c,
-                      graphId: res.id,
-                      sourceNodeId: binding.nodeId,
-                      expectedVersion: res.newVersion,
-                    };
-                  }),
-                })),
-              }))
-            );
-            setNodes((prevNodes) =>
-              prevNodes.map((n) => {
-                const binding = res.cellBindings.find(
-                  (b) => b.nodeId === n.id || b.nodeId === n.sourceNodeId
-                );
-                if (!binding) return n;
-                return { ...n, graphId: res.id, sourceNodeId: binding.nodeId, expectedVersion: res.newVersion };
-              })
-            );
-            setSaveStatusBanner(null);
+      if (isUpdateInPlace) {
+        rebindCellsAndNodesToGraph(res.cellBindings, res.id, res.newVersion ?? 0);
+        setActiveGraph({ id: res.id, title: options.title, version: res.newVersion ?? 0 });
+        setSaveStatusBanner({
+          type: 'success',
+          text: `Graph '${options.title}' updated to v${res.newVersion ?? 0}.`,
+        });
+      } else {
+        setSaveStatusBanner({
+          type: 'success',
+          text: `Layout saved as new graph '${options.title}' (v${res.newVersion ?? 0}).`,
+          action: {
+            label: 'Switch to this graph',
+            onClick: () => {
+              setActiveGraph({ id: res.id, title: options.title, version: res.newVersion ?? 0 });
+              rebindCellsAndNodesToGraph(res.cellBindings, res.id, res.newVersion ?? 0);
+              setSaveStatusBanner(null);
+            },
           },
-        },
-      });
+        });
+      }
     } catch (err: any) {
-      console.error('Layout save (new graph) failed:', err);
+      console.error('Layout save failed:', err);
       setSaveStatusBanner({
         type: 'error',
         text: `Save layout failed: ${err.message || err}`,
@@ -1095,16 +1116,17 @@ export default function App() {
       return;
     }
 
-    const defaultTitle = `${activeGraph.title} (Layout)`;
+    const defaultTitle = activeGraph.title;
     quickSaveTitleRef.current = defaultTitle;
 
     setConfirmModalData({
       isOpen: true,
-      title: 'Save Layout as New Knowledge Graph',
-      message: `This will create a brand-new Knowledge Graph containing every placed cell plus a combined HTML snapshot of the layout. Your current active graph ('${activeGraph.title}') will NOT be modified.`,
+      title: 'Save Layout',
+      message: `Create a brand-new Knowledge Graph with every placed cell plus a combined HTML snapshot of the layout, or update '${activeGraph.title}' (v${activeGraph.version ?? 0}) in place.`,
       details: `Source Layout: ${slots.length} slots | ${placedNodesCount} active nodes in canvas`,
       confirmLabel: 'Create New Graph',
-      inputLabel: 'New Graph Title',
+      secondaryConfirmLabel: `Update "${activeGraph.title}" (v${activeGraph.version ?? 0})`,
+      inputLabel: 'Graph Title',
       inputValue: defaultTitle,
       onInputChange: (v) => {
         quickSaveTitleRef.current = v;
@@ -1113,7 +1135,12 @@ export default function App() {
       onConfirm: () => {
         const title = quickSaveTitleRef.current.trim() || defaultTitle;
         setConfirmModalData(null);
-        executeQuickSave(title);
+        executeQuickSave({ title });
+      },
+      onSecondaryConfirm: () => {
+        const title = quickSaveTitleRef.current.trim() || defaultTitle;
+        setConfirmModalData(null);
+        executeQuickSave({ title, targetGraphId: activeGraph.id });
       },
     });
   };
@@ -1412,6 +1439,8 @@ export default function App() {
           inputValue={confirmModalData.inputValue}
           onInputChange={confirmModalData.onInputChange}
           inputLabel={confirmModalData.inputLabel}
+          secondaryConfirmLabel={confirmModalData.secondaryConfirmLabel}
+          onSecondaryConfirm={confirmModalData.onSecondaryConfirm}
         />
       )}
 
