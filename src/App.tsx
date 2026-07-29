@@ -33,6 +33,7 @@ import {
 } from './types';
 import { saveGraphWithHistory } from './utils/vegvisrApi';
 import { ensureUUID } from './utils/uuidUtils';
+import { resolveMedia, renderMediaHtml } from './utils/mediaUtils';
 import {
   verifyAndAuthenticateMagicToken,
   getUserFromLocalStorage,
@@ -722,64 +723,23 @@ export default function App() {
 
   const formatNodeContent = (node: any, graphTitle?: string): string => {
     const baseText = (node.info || node.description || '').trim();
-    const nodeType = (node.type || '').toLowerCase();
-    const videoPath = (node.path || node.url || node.videoUrl || '').trim();
-    const publicUrl = (node.publicUrl || '').trim();
     const label = node.label || node.id || 'Node';
+    const media = resolveMedia(node);
 
-    const isVideo =
-      nodeType === 'cloudflare-video' ||
-      nodeType === 'video' ||
-      !!videoPath.match(/\.(webm|mp4|mov|ogg|m4v)(\?.*)?$/i) ||
-      !!publicUrl.match(/\.(webm|mp4|mov|ogg|m4v)(\?.*)?$/i) ||
-      node.id === 'node-video-lydmora';
-
-    if (isVideo) {
-      let mainMediaUrl = publicUrl;
-      if (!mainMediaUrl) {
-        if (videoPath.startsWith('http://') || videoPath.startsWith('https://')) {
-          mainMediaUrl = videoPath;
-        } else if (videoPath.startsWith('recordings/')) {
-          mainMediaUrl = `https://realtimevideos.vegvisr.org/${videoPath}`;
-        } else if (videoPath) {
-          mainMediaUrl = `/api/vegvisr/proxy/${videoPath}`;
-        }
-      }
-
-      const proxyMediaUrl = videoPath ? `/api/vegvisr/proxy/${videoPath}` : mainMediaUrl;
-
-      const heading = `### 🎬 ${label}`;
-      const desc = baseText ? baseText : `*Video Node (${nodeType || 'Cloudflare Video'})*`;
-
-      let videoHtml = '';
-      if (mainMediaUrl) {
-        videoHtml = `\n\n<div class="my-3 p-3 rounded-2xl border border-slate-700/80 bg-slate-950/90 shadow-xl backdrop-blur-md">
-  <div class="flex items-center justify-between text-xs font-semibold text-pink-300 mb-2">
-    <span>🎥 ${label}</span>
-    <span class="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30">Video Player</span>
-  </div>
-  <video controls class="w-full h-auto rounded-xl max-h-[420px] bg-black shadow-inner" preload="metadata">
-    <source src="${mainMediaUrl}" type="video/webm" />
-    <source src="${proxyMediaUrl}" type="video/webm" />
-    <source src="${mainMediaUrl}" type="video/mp4" />
-    Your browser does not support playing this video directly.
-  </video>
-  <div class="mt-2 text-[11px] text-slate-400 flex items-center justify-between gap-2 overflow-hidden">
-    <span class="truncate">Source: <code class="text-slate-300 bg-slate-800/80 px-1 py-0.5 rounded">${mainMediaUrl}</code></span>
-    <a href="${mainMediaUrl}" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline font-semibold shrink-0">Open Video ↗</a>
-  </div>
-</div>`;
-      } else {
-        videoHtml = `\n\n<div class="my-3 p-4 rounded-2xl border border-dashed border-pink-500/40 bg-pink-950/20 text-center">
-  <div class="text-pink-300 font-semibold text-sm mb-1">🎬 ${label}</div>
-  <p class="text-xs text-slate-400 mb-2">No video URL attached yet. Paste a URL in the Markdown editor.</p>
-</div>`;
-      }
-
-      if (baseText.includes('<video') || baseText.includes('video-card-container')) {
+    if (media) {
+      // The node already carries its own player markup — leave it untouched.
+      if (
+        baseText.includes('<video') ||
+        baseText.includes('<audio') ||
+        baseText.includes('<iframe') ||
+        baseText.includes('video-card-container')
+      ) {
         return baseText;
       }
-      return `${heading}\n${desc}${videoHtml}`;
+
+      const heading = `### ${label}`;
+      const desc = baseText ? `\n${baseText}` : '';
+      return `${heading}${desc}\n\n${renderMediaHtml(media)}`;
     }
 
     return baseText || `### ${label}\n*Source Graph: ${graphTitle || 'Knowledge Graph'}*`;
@@ -886,8 +846,10 @@ export default function App() {
           slotEntry.gridMap.set(gridId, { size: gridSize, cols: gridCols, cells: [] });
         }
 
+        // Media nodes must go through formatNodeContent even when `info` is set:
+        // `info` is only the description, the player lives in `path` / `bibl`.
         const cellContent =
-          node.info !== undefined && node.info !== null && node.info !== ''
+          !resolveMedia(node) && node.info !== undefined && node.info !== null && node.info !== ''
             ? node.info
             : formatNodeContent(node, title);
 
@@ -927,8 +889,10 @@ export default function App() {
         const meta = node.metadata || {};
         const nodeLabel = node.label || node.name || node.id || `Node ${idx + 1}`;
         const slotTitle = meta.slotTitle || nodeLabel;
+        // Media nodes must go through formatNodeContent even when `info` is set:
+        // `info` is only the description, the player lives in `path` / `bibl`.
         const cellContent =
-          node.info !== undefined && node.info !== null && node.info !== ''
+          !resolveMedia(node) && node.info !== undefined && node.info !== null && node.info !== ''
             ? node.info
             : formatNodeContent(node, title);
 
