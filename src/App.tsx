@@ -120,6 +120,11 @@ const INITIAL_SLOTS: SlotData[] = [
 ];
 
 export default function App() {
+  // Holds the live-edited title for the "Save Layout as New Graph" dialog —
+  // a ref (not state) so the dialog's onConfirm always reads the current
+  // typed value instead of a stale closure from when the dialog was opened.
+  const quickSaveTitleRef = useRef<string>('');
+
   const [mode, setMode] = useState<AppMode>('editor');
   const [activeTheme, setActiveTheme] = useState<Theme>(THEMES[0]);
   const [lastLightTheme, setLastLightTheme] = useState<Theme>(
@@ -157,7 +162,11 @@ export default function App() {
   const [isPageBgModalOpen, setIsPageBgModalOpen] = useState(false);
   const [activeGraph, setActiveGraph] = useState<ActiveGraphContext | null>(null);
   const [isSavingQuickGraph, setIsSavingQuickGraph] = useState(false);
-  const [saveStatusBanner, setSaveStatusBanner] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [saveStatusBanner, setSaveStatusBanner] = useState<{
+    type: 'success' | 'error';
+    text: string;
+    action?: { label: string; onClick: () => void };
+  } | null>(null);
   const [confirmModalData, setConfirmModalData] = useState<{
     isOpen: boolean;
     title: string;
@@ -166,7 +175,19 @@ export default function App() {
     confirmLabel?: string;
     cancelLabel?: string;
     onConfirm: () => void;
+    inputValue?: string;
+    onInputChange?: (value: string) => void;
+    inputLabel?: string;
   } | null>(null);
+
+  // A banner carrying a Switch action must stay until clicked; plain
+  // success/error banners auto-clear after 6s.
+  useEffect(() => {
+    if (saveStatusBanner && !saveStatusBanner.action) {
+      const t = setTimeout(() => setSaveStatusBanner(null), 6000);
+      return () => clearTimeout(t);
+    }
+  }, [saveStatusBanner]);
 
   // Global Undo / Redo History Stack (holds up to 25 snapshots)
   interface HistorySnapshot {
@@ -799,6 +820,12 @@ export default function App() {
       graphData.id ||
       'Knowledge Graph';
     const graphNodes = graphData.nodes || [];
+    // html-node entries are a graph-level composed-HTML snapshot, not a
+    // placed cell — exclude them from slot/grid reconstruction so reopening
+    // a layout-saved graph doesn't produce a spurious extra slot for it.
+    // They still flow into the node library below (via graphNodes, not
+    // layoutNodes) so they can be manually dragged into a cell if wanted.
+    const layoutNodes = graphNodes.filter((n: any) => n.type !== 'html-node');
 
     const rawGraphId =
       graphData.id ||
@@ -819,7 +846,7 @@ export default function App() {
       version: version,
     });
 
-    if (!graphNodes.length) {
+    if (!layoutNodes.length) {
       const emptyCell: GridCellData = {
         id: `cell-${Date.now()}-0`,
         nodeId: 'node-empty',
@@ -862,7 +889,7 @@ export default function App() {
     });
 
     // Check if graph nodes carry slot layout metadata
-    const hasSlotMetadata = graphNodes.some((n: any) => n.metadata?.slotId);
+    const hasSlotMetadata = layoutNodes.some((n: any) => n.metadata?.slotId);
 
     let newSlots: SlotData[] = [];
 
@@ -875,7 +902,7 @@ export default function App() {
         }
       >();
 
-      graphNodes.forEach((node: any, idx: number) => {
+      layoutNodes.forEach((node: any, idx: number) => {
         const meta = node.metadata || {};
         const slotId = meta.slotId || `slot-${node.id || idx}`;
         const slotTitle = meta.slotTitle || node.label || node.name || `Slot ${idx + 1}`;
@@ -931,7 +958,7 @@ export default function App() {
       });
     } else {
       // Each node in the graph has its own slot
-      newSlots = graphNodes.map((node: any, idx: number) => {
+      newSlots = layoutNodes.map((node: any, idx: number) => {
         const meta = node.metadata || {};
         const nodeLabel = node.label || node.name || node.id || `Node ${idx + 1}`;
         const slotTitle = meta.slotTitle || nodeLabel;
@@ -971,39 +998,72 @@ export default function App() {
     setMode('editor');
   };
 
-  const executeQuickSave = async () => {
+  // Saving the LAYOUT always creates a brand-new graph — it never overwrites
+  // whichever graph happens to be active. Per-node content edits (patchNode,
+  // in CellComponent) are a separate, unaffected path that still targets a
+  // node's own existing graph. Switching the canvas onto the new graph (and
+  // thereby moving future per-node syncs onto it) is a distinct, explicit
+  // opt-in action offered via the success banner below — never automatic.
+  const executeQuickSave = async (newGraphTitle: string) => {
     if (!activeGraph) return;
     setIsSavingQuickGraph(true);
     setSaveStatusBanner(null);
-    const targetId = ensureUUID(activeGraph.id);
     try {
       const res = await saveGraphWithHistory({
-        id: targetId,
-        title: activeGraph.title,
+        id: undefined, // always mint a fresh UUID — never reuse activeGraph.id
+        title: newGraphTitle,
         slots,
         nodes,
+        activeTheme,
+        includeHtmlNode: true,
         override: true,
       });
-      const finalId = ensureUUID(res.id || targetId);
-      setActiveGraph((prev) =>
-        prev
-          ? {
-              ...prev,
-              id: finalId,
-              version: res.newVersion !== undefined ? res.newVersion : (prev.version ? prev.version + 1 : 1),
-            }
-          : null
-      );
+
       setSaveStatusBanner({
         type: 'success',
-        text: `Graph '${activeGraph.title}' saved to Vegvisr v${res.newVersion || 1}!`,
+        text: `Layout saved as new graph '${newGraphTitle}' (v${res.newVersion ?? 0}).`,
+        action: {
+          label: 'Switch to this graph',
+          onClick: () => {
+            setActiveGraph({ id: res.id, title: newGraphTitle, version: res.newVersion ?? 0 });
+            setSlots((prevSlots) =>
+              prevSlots.map((s) => ({
+                ...s,
+                grids: s.grids.map((g) => ({
+                  ...g,
+                  cells: g.cells.map((c) => {
+                    const binding = res.cellBindings.find(
+                      (b) => b.slotId === s.id && b.gridId === g.id && b.cellId === c.id
+                    );
+                    if (!binding) return c;
+                    return {
+                      ...c,
+                      graphId: res.id,
+                      sourceNodeId: binding.nodeId,
+                      expectedVersion: res.newVersion,
+                    };
+                  }),
+                })),
+              }))
+            );
+            setNodes((prevNodes) =>
+              prevNodes.map((n) => {
+                const binding = res.cellBindings.find(
+                  (b) => b.nodeId === n.id || b.nodeId === n.sourceNodeId
+                );
+                if (!binding) return n;
+                return { ...n, graphId: res.id, sourceNodeId: binding.nodeId, expectedVersion: res.newVersion };
+              })
+            );
+            setSaveStatusBanner(null);
+          },
+        },
       });
-      setTimeout(() => setSaveStatusBanner(null), 6000);
     } catch (err: any) {
-      console.error('Quick save failed:', err);
+      console.error('Layout save (new graph) failed:', err);
       setSaveStatusBanner({
         type: 'error',
-        text: `Save graph failed: ${err.message || err}`,
+        text: `Save layout failed: ${err.message || err}`,
       });
     } finally {
       setIsSavingQuickGraph(false);
@@ -1012,8 +1072,6 @@ export default function App() {
 
   const handleQuickSaveGraph = () => {
     if (!activeGraph) return;
-
-    const graphId = ensureUUID(activeGraph.id);
 
     const placedNodesCount = slots.reduce((acc, slot) => {
       return (
@@ -1029,14 +1087,33 @@ export default function App() {
       );
     }, 0);
 
+    if (placedNodesCount === 0) {
+      setSaveStatusBanner({
+        type: 'error',
+        text: 'Nothing to save: place at least one node into the layout first.',
+      });
+      return;
+    }
+
+    const defaultTitle = `${activeGraph.title} (Layout)`;
+    quickSaveTitleRef.current = defaultTitle;
+
     setConfirmModalData({
       isOpen: true,
-      title: 'Confirm Save Graph',
-      message: `Do you want to save changes to the active graph?`,
-      details: `Graph Title: "${activeGraph.title}"\nGraph ID: ${graphId}\nLayout Structure: ${slots.length} slots | ${placedNodesCount} active nodes in canvas`,
+      title: 'Save Layout as New Knowledge Graph',
+      message: `This will create a brand-new Knowledge Graph containing every placed cell plus a combined HTML snapshot of the layout. Your current active graph ('${activeGraph.title}') will NOT be modified.`,
+      details: `Source Layout: ${slots.length} slots | ${placedNodesCount} active nodes in canvas`,
+      confirmLabel: 'Create New Graph',
+      inputLabel: 'New Graph Title',
+      inputValue: defaultTitle,
+      onInputChange: (v) => {
+        quickSaveTitleRef.current = v;
+        setConfirmModalData((prev) => (prev ? { ...prev, inputValue: v } : prev));
+      },
       onConfirm: () => {
+        const title = quickSaveTitleRef.current.trim() || defaultTitle;
         setConfirmModalData(null);
-        executeQuickSave();
+        executeQuickSave(title);
       },
     });
   };
@@ -1332,6 +1409,9 @@ export default function App() {
           cancelLabel={confirmModalData.cancelLabel}
           onConfirm={confirmModalData.onConfirm}
           onCancel={() => setConfirmModalData(null)}
+          inputValue={confirmModalData.inputValue}
+          onInputChange={confirmModalData.onInputChange}
+          inputLabel={confirmModalData.inputLabel}
         />
       )}
 
@@ -1339,13 +1419,23 @@ export default function App() {
       {saveStatusBanner && (
         <div
           id="global-save-toast-banner"
-          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl border shadow-xl flex items-center gap-3 text-xs font-semibold animate-bounce ${
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl border shadow-xl flex items-center gap-3 text-xs font-semibold ${
+            saveStatusBanner.action ? '' : 'animate-bounce'
+          } ${
             saveStatusBanner.type === 'success'
               ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200'
               : 'bg-rose-950/90 border-rose-500/50 text-rose-200'
           }`}
         >
           <span>{saveStatusBanner.text}</span>
+          {saveStatusBanner.action && (
+            <button
+              onClick={saveStatusBanner.action.onClick}
+              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 font-bold text-[11px] shrink-0"
+            >
+              {saveStatusBanner.action.label}
+            </button>
+          )}
           <button
             onClick={() => setSaveStatusBanner(null)}
             className="text-slate-400 hover:text-white"

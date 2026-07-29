@@ -134,7 +134,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       onClick={onQuickSaveGraph}
                       disabled={isSavingQuickGraph}
                       className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white transition-colors cursor-pointer"
-                      title="Quick Save Layout to Active Knowledge Graph"
+                      title="Save Layout as New Knowledge Graph"
                     >
                       {isSavingQuickGraph ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />

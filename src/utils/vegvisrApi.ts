@@ -1,6 +1,7 @@
 import { KnowGraphNode, KnowGraphEdge, SlotData, NodeItem, Theme } from '../types';
 import { ensureUUID, isValidUUID } from './uuidUtils';
 import { vegvisrFetch } from './vegvisrClient';
+import { generateLayoutFragment } from './htmlExporter';
 
 export interface PatchNodeParams {
   graphId: string;
@@ -177,6 +178,16 @@ export interface SaveGraphParams {
   nodes: NodeItem[];
   activeTheme?: Theme;
   override?: boolean;
+  // When true, also write a graph-level 'html-node' snapshot of the composed
+  // layout alongside the per-cell nodes. Requires activeTheme.
+  includeHtmlNode?: boolean;
+}
+
+export interface SavedCellBinding {
+  slotId: string;
+  gridId: string;
+  cellId: string;
+  nodeId: string;
 }
 
 /**
@@ -187,6 +198,8 @@ export async function saveGraphWithHistory(params: SaveGraphParams): Promise<{
   id: string;
   newVersion?: number;
   message?: string;
+  cellBindings: SavedCellBinding[];
+  htmlNodeId?: string;
 }> {
   // Graph ID must strictly be a UUID. If params.id is a valid UUID, reuse it; otherwise generate a new UUID.
   const graphId = ensureUUID(params.id);
@@ -194,6 +207,7 @@ export async function saveGraphWithHistory(params: SaveGraphParams): Promise<{
   const graphNodes: KnowGraphNode[] = [];
   const graphEdges: KnowGraphEdge[] = [];
   const processedNodeIds = new Set<string>();
+  const cellBindings: SavedCellBinding[] = [];
 
   params.slots.forEach((slot, sIdx) => {
     slot.grids.forEach((grid, gIdx) => {
@@ -226,6 +240,7 @@ export async function saveGraphWithHistory(params: SaveGraphParams): Promise<{
           finalNodeId = `node-${slot.id}-${grid.id}-${cell.id}`;
         }
         processedNodeIds.add(finalNodeId);
+        cellBindings.push({ slotId: slot.id, gridId: grid.id, cellId: cell.id, nodeId: finalNodeId });
 
         graphNodes.push({
           id: finalNodeId,
@@ -250,6 +265,24 @@ export async function saveGraphWithHistory(params: SaveGraphParams): Promise<{
   });
 
   // Note: Only nodes actually placed in slot grid cells are saved to the graph to maintain SSOT integrity.
+
+  let htmlNodeId: string | undefined;
+  if (params.includeHtmlNode) {
+    if (!params.activeTheme) {
+      throw new Error('activeTheme is required when includeHtmlNode is true');
+    }
+    // Deterministic per graph id, so re-saving the same graph updates this
+    // node instead of accumulating duplicates. Graph-level, not tied to any
+    // cell/slot, so it deliberately carries no metadata.slotId.
+    htmlNodeId = `html-node-${graphId}`;
+    graphNodes.push({
+      id: htmlNodeId,
+      label: `${params.title || 'Layout'} (Composed HTML)`,
+      type: 'html-node',
+      info: generateLayoutFragment(params.slots, params.nodes, params.activeTheme),
+      visible: true,
+    });
+  }
 
   // Create graph edges connecting sequential nodes within each slot
   for (let i = 0; i < graphNodes.length - 1; i++) {
@@ -309,5 +342,7 @@ export async function saveGraphWithHistory(params: SaveGraphParams): Promise<{
     id: data.id || graphId,
     newVersion: data.newVersion,
     message: data.message || 'Graph with history saved successfully to Vegvisr',
+    cellBindings,
+    htmlNodeId,
   };
 }

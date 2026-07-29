@@ -10,6 +10,9 @@ interface ConfirmModalProps {
   cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
+  inputValue?: string;
+  onInputChange?: (value: string) => void;
+  inputLabel?: string;
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -21,6 +24,9 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   cancelLabel = 'Cancel',
   onConfirm,
   onCancel,
+  inputValue,
+  onInputChange,
+  inputLabel,
 }) => {
   if (!isOpen) return null;
 
@@ -52,6 +58,26 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
                 className="mt-2.5 p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs font-mono text-slate-300 break-all whitespace-pre-line leading-relaxed shadow-inner"
               >
                 {details}
+              </div>
+            )}
+            {onInputChange && (
+              <div className="mt-2.5 space-y-1">
+                {inputLabel && (
+                  <label
+                    htmlFor="confirm-modal-input"
+                    className="text-xs font-medium text-slate-400"
+                  >
+                    {inputLabel}
+                  </label>
+                )}
+                <input
+                  id="confirm-modal-input"
+                  type="text"
+                  value={inputValue ?? ''}
+                  onChange={(e) => onInputChange(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-700 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
+                />
               </div>
             )}
           </div>
