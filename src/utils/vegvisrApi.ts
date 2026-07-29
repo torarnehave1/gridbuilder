@@ -1,7 +1,7 @@
 import { KnowGraphNode, KnowGraphEdge, SlotData, NodeItem, Theme } from '../types';
 import { ensureUUID, isValidUUID } from './uuidUtils';
 import { vegvisrFetch } from './vegvisrClient';
-import { generateLayoutFragment } from './htmlExporter';
+import { generateStandaloneHtml } from './htmlExporter';
 
 export interface PatchNodeParams {
   graphId: string;
@@ -274,12 +274,19 @@ export async function saveGraphWithHistory(params: SaveGraphParams): Promise<{
     // Deterministic per graph id, so re-saving the same graph updates this
     // node instead of accumulating duplicates. Graph-level, not tied to any
     // cell/slot, so it deliberately carries no metadata.slotId.
+    //
+    // Must be a COMPLETE standalone document, not a fragment: the wider
+    // Vegvisr ecosystem's "publish to domain" flow (GNewHtmlNode.vue in
+    // vegvisr-frontend) takes an html-node's `info` verbatim and serves it
+    // as an entire page, only injecting an auth-bridge <script> into <head>
+    // (falling back to bare-prepending it if no <head>/<html> tag is found
+    // at all). A fragment produced a broken page with no document wrapper.
     htmlNodeId = `html-node-${graphId}`;
     graphNodes.push({
       id: htmlNodeId,
       label: `${params.title || 'Layout'} (Composed HTML)`,
       type: 'html-node',
-      info: generateLayoutFragment(params.slots, params.nodes, params.activeTheme),
+      info: generateStandaloneHtml(params.slots, params.nodes, params.activeTheme, params.title || 'Layout'),
       visible: true,
     });
   }
