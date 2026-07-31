@@ -4,6 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { SlotWrap } from './components/SlotWrap';
 import { ThemePickerModal } from './components/ThemePickerModal';
 import { ExportModal } from './components/ExportModal';
+import { PublishModal } from './components/PublishModal';
 import { AiGeneratorModal } from './components/AiGeneratorModal';
 import { VegvisrModal } from './components/VegvisrModal';
 import { VegvisrAuthModal } from './components/VegvisrAuthModal';
@@ -278,6 +279,7 @@ export default function App() {
   // Modals
   const [isThemePickerOpen, setIsThemePickerOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isAiGeneratorOpen, setIsAiGeneratorOpen] = useState(false);
   const [isVegvisrModalOpen, setIsVegvisrModalOpen] = useState(false);
 
@@ -1179,6 +1181,7 @@ export default function App() {
         onOpenAiGenerator={() => setIsAiGeneratorOpen(true)}
         onOpenVegvisrModal={() => setIsVegvisrModalOpen(true)}
         onOpenExportModal={() => setIsExportModalOpen(true)}
+        onOpenPublishModal={() => setIsPublishModalOpen(true)}
         onResetLayout={handleResetLayout}
         slotCount={slots.length}
         activeGraph={activeGraph}
@@ -1376,6 +1379,16 @@ export default function App() {
         pageBgOverlay={pageBgOverlay}
         pageBgFit={pageBgFit}
       />
+
+      {/* Publish to Domain Modal — targets the html-node produced by the last graph save */}
+      {activeGraph && (
+        <PublishModal
+          isOpen={isPublishModalOpen}
+          onClose={() => setIsPublishModalOpen(false)}
+          graphId={activeGraph.id}
+          nodeId={`html-node-${activeGraph.id}`}
+        />
+      )}
 
       {/* Page Background Image Modal */}
       <BgImageModal

@@ -21,6 +21,7 @@ import {
   Undo,
   Redo,
   Image as ImageIcon,
+  UploadCloud,
 } from 'lucide-react';
 import { AppMode, Theme, ActiveGraphContext, VegvisrUser } from '../types';
 
@@ -35,6 +36,7 @@ interface NavbarProps {
   onOpenAiGenerator: () => void;
   onOpenVegvisrModal?: () => void;
   onOpenExportModal: () => void;
+  onOpenPublishModal?: () => void;
   onResetLayout: () => void;
   slotCount: number;
   activeGraph?: ActiveGraphContext | null;
@@ -63,6 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAiGenerator,
   onOpenVegvisrModal,
   onOpenExportModal,
+  onOpenPublishModal,
   onResetLayout,
   slotCount,
   activeGraph,
@@ -392,11 +395,24 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={onOpenExportModal}
             className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded shadow-sm shadow-indigo-100 transition-colors"
-            title="Publish & Export Code"
+            title="Export Code"
           >
             <Code className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Publish / Code</span>
+            <span className="hidden sm:inline">Export Code</span>
           </button>
+
+          {/* Publish to Domain Trigger — needs a saved graph (its html-node) to publish */}
+          {onOpenPublishModal && (
+            <button
+              onClick={onOpenPublishModal}
+              disabled={!activeGraph}
+              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed rounded shadow-sm shadow-emerald-100 transition-colors"
+              title={activeGraph ? 'Publish this layout to a live domain' : 'Save the layout as a graph first'}
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Publish</span>
+            </button>
+          )}
 
           {mode === 'editor' && (
             <button
