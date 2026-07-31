@@ -103,6 +103,15 @@ export const PublishModal: React.FC<PublishModalProps> = ({ isOpen, onClose, gra
       });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.success) {
+        if (data.hostRoutes === false) {
+          // Content is stored, but the host has no DNS/route yet — NOT live.
+          // Mirrors the API's own instruction: do not report this as published.
+          setPublishNeedsSubdomain(true);
+          setPublishMsg(
+            `Content saved for ${target}, but it does not resolve yet — create the subdomain to make it reachable.`
+          );
+          return;
+        }
         setPublishMsg(`Published · ${target} is live`);
         setPublishNeedsSubdomain(false);
         loadPublishedHosts();
