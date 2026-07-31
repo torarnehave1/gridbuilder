@@ -54,6 +54,9 @@ export const PublishModal: React.FC<PublishModalProps> = ({ isOpen, onClose, gra
   const [publishing, setPublishing] = useState(false);
   const [publishMsg, setPublishMsg] = useState('');
   const [publishNeedsSubdomain, setPublishNeedsSubdomain] = useState(false);
+  // Wrong-host guard: the node is already associated with a different live host.
+  // The API rejects the retarget unless force:true is passed explicitly.
+  const [publishWrongHost, setPublishWrongHost] = useState<string[] | null>(null);
 
   const loadPublishedHosts = useCallback(async () => {
     if (!graphId || !nodeId) {
@@ -83,6 +86,7 @@ export const PublishModal: React.FC<PublishModalProps> = ({ isOpen, onClose, gra
     if (!isOpen) {
       setPublishMsg('');
       setPublishNeedsSubdomain(false);
+      setPublishWrongHost(null);
     }
   }, [isOpen]);
 
@@ -95,6 +99,7 @@ export const PublishModal: React.FC<PublishModalProps> = ({ isOpen, onClose, gra
     setPublishing(true);
     setPublishMsg('Publishing…');
     setPublishNeedsSubdomain(false);
+    setPublishWrongHost(null);
     try {
       const res = await fetch(`${AGENT_API}/publish`, {
         method: 'POST',
@@ -118,7 +123,10 @@ export const PublishModal: React.FC<PublishModalProps> = ({ isOpen, onClose, gra
         return;
       }
       const err = String(data?.error || `HTTP ${res.status}`);
-      if (/create_subdomain|does not route|create it first|route to brand-worker/i.test(err)) {
+      if (Array.isArray(data?.associatedHosts) && data.associatedHosts.length > 0) {
+        setPublishWrongHost(data.associatedHosts);
+        setPublishMsg(err);
+      } else if (/create_subdomain|does not route|create it first|route to brand-worker/i.test(err)) {
         setPublishNeedsSubdomain(true);
         setPublishMsg(`${target} does not exist as a host yet — create the subdomain first.`);
       } else {
@@ -217,6 +225,7 @@ export const PublishModal: React.FC<PublishModalProps> = ({ isOpen, onClose, gra
             onChange={(e) => {
               setPublishHost(e.target.value);
               setPublishNeedsSubdomain(false);
+              setPublishWrongHost(null);
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !publishing) runPublish(publishHost);
@@ -243,6 +252,16 @@ export const PublishModal: React.FC<PublishModalProps> = ({ isOpen, onClose, gra
               className="px-4 py-2 rounded-xl text-xs font-semibold text-sky-100 bg-sky-600/80 hover:bg-sky-500 disabled:opacity-40 transition-all cursor-pointer"
             >
               Create subdomain and publish
+            </button>
+          )}
+          {publishWrongHost && (
+            <button
+              onClick={() => runPublish(publishHost, true)}
+              disabled={publishing}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-amber-100 bg-amber-600/80 hover:bg-amber-500 disabled:opacity-40 transition-all cursor-pointer"
+              title={`This page is already published to ${publishWrongHost.join(', ')}. Force publishing to a second host anyway.`}
+            >
+              Publish anyway (force)
             </button>
           )}
           <button
