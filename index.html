@@ -13,6 +13,11 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- SSOT contact-form web component (served from the Component Registry graph).
+         Self-mounts any [data-vegvisr-contact] marker dropped into a grid cell, so
+         the builder shows the real form (WYSIWYG) — the same script the published
+         page gets injected. -->
+    <script src="https://api.vegvisr.org/components/contact-form.js" defer></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
