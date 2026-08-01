@@ -2,6 +2,15 @@ import { NodeItem } from '../types';
 
 export const DEFAULT_NODES: NodeItem[] = [
   {
+    // SSOT contact form: a tiny marker the contact-form web component (loaded in
+    // index.html, served from the Component Registry graph) mounts live in the
+    // cell and on the published page. Not a copied HTML blob.
+    id: 'contact-form-marker',
+    label: 'Kontaktskjema',
+    category: 'Content',
+    info: `<div data-vegvisr-contact data-endpoint="https://brand-worker.torarnehave.workers.dev/__contact"></div>`,
+  },
+  {
     id: 'hero-main',
     label: 'Hero Main Header',
     category: 'Hero',
