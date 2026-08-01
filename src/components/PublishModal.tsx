@@ -53,9 +53,10 @@ export const PublishModal: React.FC<PublishModalProps> = ({ isOpen, onClose, gra
   const [publishHost, setPublishHost] = useState('');
   const [publishing, setPublishing] = useState(false);
   const [publishMsg, setPublishMsg] = useState('');
-  const [publishNeedsSubdomain, setPublishNeedsSubdomain] = useState(false);
   // Wrong-host guard: the node is already associated with a different live host.
-  // The API rejects the retarget unless force:true is passed explicitly.
+  // The API rejects the retarget unless force:true is passed explicitly — this is
+  // the one case that stays a manual confirmation, since it overrides an existing
+  // live binding. Every other failure (missing DNS/route) is handled automatically.
   const [publishWrongHost, setPublishWrongHost] = useState<string[] | null>(null);
 
   const loadPublishedHosts = useCallback(async () => {
@@ -85,70 +86,18 @@ export const PublishModal: React.FC<PublishModalProps> = ({ isOpen, onClose, gra
   useEffect(() => {
     if (!isOpen) {
       setPublishMsg('');
-      setPublishNeedsSubdomain(false);
       setPublishWrongHost(null);
     }
   }, [isOpen]);
 
-  const runPublish = async (host: string, force = false) => {
-    const target = host.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-    if (!target || !target.includes('.')) {
-      setPublishMsg('Enter a valid host, e.g. universi.vegvisr.org');
-      return;
-    }
-    setPublishing(true);
-    setPublishMsg('Publishing…');
-    setPublishNeedsSubdomain(false);
-    setPublishWrongHost(null);
-    try {
-      const res = await fetch(`${AGENT_API}/publish`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ graphId, nodeId, host: target, force, authToken: getAuthToken() }),
-      });
-      const data = await res.json().catch(() => null);
-      if (res.ok && data?.success) {
-        if (data.hostRoutes === false) {
-          // Content is stored, but the host has no DNS/route yet — NOT live.
-          // Mirrors the API's own instruction: do not report this as published.
-          setPublishNeedsSubdomain(true);
-          setPublishMsg(
-            `Content saved for ${target}, but it does not resolve yet — create the subdomain to make it reachable.`
-          );
-          return;
-        }
-        setPublishMsg(`Published · ${target} is live`);
-        setPublishNeedsSubdomain(false);
-        loadPublishedHosts();
-        return;
-      }
-      const err = String(data?.error || `HTTP ${res.status}`);
-      if (Array.isArray(data?.associatedHosts) && data.associatedHosts.length > 0) {
-        setPublishWrongHost(data.associatedHosts);
-        setPublishMsg(err);
-      } else if (/create_subdomain|does not route|create it first|route to brand-worker/i.test(err)) {
-        setPublishNeedsSubdomain(true);
-        setPublishMsg(`${target} does not exist as a host yet — create the subdomain first.`);
-      } else {
-        setPublishMsg(err);
-      }
-    } catch (e: any) {
-      setPublishMsg(`Publish failed: ${e.message || e}`);
-    } finally {
-      setPublishing(false);
-    }
-  };
-
-  const createSubdomainAndPublish = async () => {
-    const target = publishHost.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  // Creates <subdomain>.<root_domain> (routes it to brand-worker) — no-ops with
+  // an error surfaced if it can't be derived or the API call fails.
+  const createSubdomain = async (target: string): Promise<{ ok: boolean; error?: string }> => {
     const [subdomain, ...rest] = target.split('.');
     const root_domain = rest.join('.');
     if (!subdomain || !root_domain.includes('.')) {
-      setPublishMsg('Cannot derive subdomain + root domain from that host.');
-      return;
+      return { ok: false, error: 'Cannot derive subdomain + root domain from that host.' };
     }
-    setPublishing(true);
-    setPublishMsg(`Creating ${target}…`);
     try {
       const res = await fetch(`${AGENT_API}/create-subdomain`, {
         method: 'POST',
@@ -157,14 +106,77 @@ export const PublishModal: React.FC<PublishModalProps> = ({ isOpen, onClose, gra
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
-        setPublishMsg(String(data?.error || `Could not create the subdomain (HTTP ${res.status})`));
+        return { ok: false, error: String(data?.error || `Could not create the subdomain (HTTP ${res.status})`) };
+      }
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, error: `Subdomain creation failed: ${e.message || e}` };
+    }
+  };
+
+  // Publishes to `host`. On any routing failure (host doesn't exist / doesn't route
+  // to brand-worker yet) this creates the subdomain itself and retries — no manual
+  // "create it first" step. The one failure that stays manual is the wrong-host
+  // guard (this node is already live elsewhere): that needs an explicit force.
+  const runPublish = async (host: string, force = false, _autoCreated = false) => {
+    const target = host.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    if (!target || !target.includes('.')) {
+      setPublishMsg('Enter a valid host, e.g. universi.vegvisr.org');
+      return;
+    }
+    setPublishing(true);
+    setPublishMsg(_autoCreated ? `Publishing to ${target}…` : 'Publishing…');
+    setPublishWrongHost(null);
+    try {
+      const res = await fetch(`${AGENT_API}/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ graphId, nodeId, host: target, force, authToken: getAuthToken() }),
+      });
+      const data = await res.json().catch(() => null);
+      const needsRoute =
+        (res.ok && data?.success && data.hostRoutes === false) ||
+        (!(res.ok && data?.success) &&
+          !(Array.isArray(data?.associatedHosts) && data.associatedHosts.length > 0) &&
+          /create_subdomain|does not route|create it first|route to brand-worker/i.test(
+            String(data?.error || '')
+          ));
+
+      if (needsRoute) {
+        if (_autoCreated) {
+          // Already tried creating it once for this call — avoid looping.
+          setPublishMsg(`${target} still does not resolve after creating the subdomain. Try again shortly (DNS propagation).`);
+          setPublishing(false);
+          return;
+        }
+        setPublishMsg(`${target} isn't set up yet — creating it…`);
+        const created = await createSubdomain(target);
+        if (!created.ok) {
+          setPublishMsg(created.error || `Could not create ${target}.`);
+          setPublishing(false);
+          return;
+        }
+        await runPublish(target, force, true);
+        return;
+      }
+
+      if (res.ok && data?.success) {
+        setPublishMsg(`Published · ${target} is live`);
+        loadPublishedHosts();
         setPublishing(false);
         return;
       }
-      setPublishNeedsSubdomain(false);
-      await runPublish(target);
+
+      const err = String(data?.error || `HTTP ${res.status}`);
+      if (Array.isArray(data?.associatedHosts) && data.associatedHosts.length > 0) {
+        setPublishWrongHost(data.associatedHosts);
+        setPublishMsg(err);
+      } else {
+        setPublishMsg(err);
+      }
+      setPublishing(false);
     } catch (e: any) {
-      setPublishMsg(`Subdomain creation failed: ${e.message || e}`);
+      setPublishMsg(`Publish failed: ${e.message || e}`);
       setPublishing(false);
     }
   };
@@ -224,7 +236,6 @@ export const PublishModal: React.FC<PublishModalProps> = ({ isOpen, onClose, gra
             value={publishHost}
             onChange={(e) => {
               setPublishHost(e.target.value);
-              setPublishNeedsSubdomain(false);
               setPublishWrongHost(null);
             }}
             onKeyDown={(e) => {
@@ -245,15 +256,6 @@ export const PublishModal: React.FC<PublishModalProps> = ({ isOpen, onClose, gra
           >
             Close
           </button>
-          {publishNeedsSubdomain && (
-            <button
-              onClick={createSubdomainAndPublish}
-              disabled={publishing}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-sky-100 bg-sky-600/80 hover:bg-sky-500 disabled:opacity-40 transition-all cursor-pointer"
-            >
-              Create subdomain and publish
-            </button>
-          )}
           {publishWrongHost && (
             <button
               onClick={() => runPublish(publishHost, true)}
