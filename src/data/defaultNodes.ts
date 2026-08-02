@@ -8,7 +8,10 @@ export const DEFAULT_NODES: NodeItem[] = [
     id: 'contact-form-marker',
     label: 'Kontaktskjema',
     category: 'Content',
-    info: `<div data-vegvisr-contact data-endpoint="https://brand-worker.torarnehave.workers.dev/__contact"></div>`,
+    // Self-contained marker (carries its own <script>) so it also mounts when
+    // the cell HTML lands in an iframe/published page; in the builder canvas the
+    // app-wide script (index.html) mounts it.
+    info: `<div data-vegvisr-contact data-endpoint="https://brand-worker.torarnehave.workers.dev/__contact"></div><script src="https://api.vegvisr.org/components/contact-form.js" defer></script>`,
   },
   {
     id: 'hero-main',
