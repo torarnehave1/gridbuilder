@@ -16,6 +16,7 @@
   --font-sans: 'HK Grotesk', 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-script: 'Caveat', 'Dancing Script', 'Sacramento', cursive;
   --font-mono: 'Fira Code', monospace;
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 /* Script Embellishment / Superimposed Handwritten Overlay */
@@ -128,13 +129,15 @@ body {
 }
 
 .themed-content a {
-  color: var(--accent);
+  color: var(--muted);
   text-decoration: underline;
+  text-decoration-color: var(--accent);
   text-underline-offset: 3px;
   font-weight: 600;
 }
 
 .themed-content a:hover {
+  color: var(--accent);
   opacity: 0.8;
 }
 
@@ -146,12 +149,15 @@ body {
   color: var(--text);
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
   backdrop-filter: blur(8px);
-  transition: all 0.25s ease;
+  transition: border-color 0.25s var(--ease-out-strong),
+              box-shadow 0.25s var(--ease-out-strong);
 }
 
-.themed-tile:hover {
-  border-color: var(--accent);
-  box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.08);
+@media (hover: hover) and (pointer: fine) {
+  .themed-tile:hover {
+    border-color: var(--accent);
+    box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.08);
+  }
 }
 
 /* Card Elements & Animation Variants */
@@ -162,32 +168,51 @@ body {
   color: var(--text);
   padding: 18px;
   box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.05);
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+  transition: transform 0.25s var(--ease-out-strong),
+              box-shadow 0.25s var(--ease-out-strong),
+              border-color 0.25s var(--ease-out-strong),
               background-color 0.25s ease;
   box-sizing: border-box;
 }
 
-.theme-card.hover-lift:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.12);
-  border-color: var(--accent);
-}
+@media (hover: hover) and (pointer: fine) {
+  .theme-card.hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.12);
+    border-color: var(--accent);
+  }
 
-.theme-card.hover-scale:hover {
-  transform: scale(1.02);
-  box-shadow: 0 10px 24px -4px rgba(0, 0, 0, 0.1);
-  border-color: var(--accent);
-}
+  .theme-card.hover-scale:hover {
+    transform: scale(1.02);
+    box-shadow: 0 10px 24px -4px rgba(0, 0, 0, 0.1);
+    border-color: var(--accent);
+  }
 
-.theme-card.hover-glow:hover {
-  border-color: var(--accent);
-  box-shadow: 0 0 24px -2px var(--accent);
+  .theme-card.hover-glow:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 24px -2px var(--accent);
+  }
 }
 
 .theme-card.animate-pulse-subtle {
   animation: card-pulse-subtle 3s infinite ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-card,
+  .themed-tile {
+    transition-duration: 0.01ms !important;
+  }
+
+  .theme-card.hover-lift:hover,
+  .theme-card.hover-scale:hover {
+    transform: none;
+  }
+
+  .theme-card.animate-pulse-subtle {
+    animation: none;
+    border-color: var(--accent);
+  }
 }
 
 @keyframes card-pulse-subtle {

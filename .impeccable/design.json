@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-03T00:00:00.000Z",
+  "title": "Design System: Grid Builder",
+  "extensions": {
+    "colorMeta": {
+      "bg1": { "role": "neutral", "displayName": "Warm Stone", "canonical": "#BAA799" },
+      "bg2": { "role": "neutral", "displayName": "Deeper Stone", "canonical": "#A89485" },
+      "text": { "role": "neutral", "displayName": "Espresso Ink", "canonical": "#202322" },
+      "muted": { "role": "neutral", "displayName": "Burnt Soft", "canonical": "#572210" },
+      "accent": { "role": "primary", "displayName": "Weathered Copper", "canonical": "#A37138" },
+      "accent2": { "role": "secondary", "displayName": "Muted Olive", "canonical": "#7D6E4E" },
+      "card-bg": { "role": "neutral", "displayName": "Card Glass", "canonical": "rgba(255, 255, 255, 0.35)" },
+      "card-border": { "role": "neutral", "displayName": "Card Hairline", "canonical": "rgba(32, 35, 34, 0.18)" },
+      "modal-surface": { "role": "neutral", "displayName": "Fixed Slate Surface", "canonical": "#0f172a" },
+      "modal-confirm": { "role": "primary", "displayName": "Modal Blue", "canonical": "#2563eb" },
+      "modal-danger": { "role": "tertiary", "displayName": "Modal Amber", "canonical": "#f59e0b" },
+      "brass": { "role": "tertiary", "displayName": "Brass", "canonical": "#a28f39" },
+      "copper-green": { "role": "tertiary", "displayName": "Copper Green", "canonical": "#7fb3a0" },
+      "titanium-blue": { "role": "tertiary", "displayName": "Titanium Blue", "canonical": "#a8d5e2" },
+      "linen": { "role": "neutral", "displayName": "Linen", "canonical": "#d9d0af" },
+      "deep-olive": { "role": "neutral", "displayName": "Deep Olive", "canonical": "#2d2b16" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Headings inside themed markdown content." },
+      "body": { "displayName": "Body", "purpose": "Default UI and content copy." },
+      "script": { "displayName": "Script Accent", "purpose": "Decorative overlay/emphasis only, never body or headings." },
+      "mono": { "displayName": "Mono", "purpose": "Inline code inside themed markdown content." }
+    },
+    "shadows": [
+      { "name": "ambient-rest", "value": "0 4px 20px -2px rgba(0,0,0,0.05), 0 2px 6px -1px rgba(0,0,0,0.03)", "purpose": "Default tile/card shadow at rest." },
+      { "name": "ambient-hover", "value": "0 8px 30px -4px rgba(0,0,0,0.08)", "purpose": "Tile hover state." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Card transform/shadow/border transitions." }
+    ],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Theme Card",
+      "kind": "card",
+      "refersTo": "theme-card",
+      "description": "Default glass-surface card used for grid tiles and content containers.",
+      "html": "<div class=\"ds-theme-card\">Card content</div>",
+      "css": ".ds-theme-card { background-color: rgba(255,255,255,0.35); border: 1px solid rgba(32,35,34,0.18); border-radius: 12px; color: #202322; padding: 18px; box-shadow: 0 4px 20px -2px rgba(0,0,0,0.05), 0 2px 6px -1px rgba(0,0,0,0.03); backdrop-filter: blur(8px); transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), box-shadow 0.25s cubic-bezier(0.4,0,0.2,1), border-color 0.25s cubic-bezier(0.4,0,0.2,1); } .ds-theme-card:hover { border-color: #A37138; box-shadow: 0 8px 30px -4px rgba(0,0,0,0.08); }"
+    },
+    {
+      "name": "Modal Confirm Button",
+      "kind": "button",
+      "refersTo": "button-confirm",
+      "description": "Primary confirm action inside modals (fixed slate/blue register, independent of active page theme).",
+      "html": "<button class=\"ds-btn-confirm\">Confirm</button>",
+      "css": ".ds-btn-confirm { background: #2563eb; color: #ffffff; padding: 8px 16px; border-radius: 12px; font-weight: 600; font-size: 0.75rem; border: none; box-shadow: 0 10px 15px -3px rgba(37,99,235,0.2); transition: background 0.2s; } .ds-btn-confirm:hover { background: #3b82f6; } .ds-btn-confirm:focus-visible { outline: 2px solid rgba(59,130,246,0.6); outline-offset: 2px; }"
+    },
+    {
+      "name": "Modal Input",
+      "kind": "input",
+      "refersTo": "modal-input",
+      "description": "Text input used inside fixed-palette modals (confirm/export/publish).",
+      "html": "<input class=\"ds-input-modal\" type=\"text\" placeholder=\"Type here\" />",
+      "css": ".ds-input-modal { width: 100%; padding: 8px 12px; border-radius: 12px; background: rgba(2,6,23,0.8); border: 1px solid #334155; color: #f1f5f9; font-size: 0.875rem; } .ds-input-modal:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(59,130,246,0.6); }"
+    },
+    {
+      "name": "Sidebar Icon Button",
+      "kind": "button",
+      "refersTo": "sidebar-icon-button",
+      "description": "Compact icon-only control in the collapsed sidebar rail; color follows the active theme's accent.",
+      "html": "<button class=\"ds-sidebar-icon\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\"><path d=\"M4 4h16v16H4z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/></svg></button>",
+      "css": ".ds-sidebar-icon { padding: 8px; border-radius: 6px; color: #A37138; background: transparent; border: none; transition: opacity 0.2s; } .ds-sidebar-icon:hover { opacity: 0.8; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Warm Ledger",
+    "overview": "Grid Builder's editor chrome reads as a warm, tactile workspace for assembling pages by hand — earthy stone and taupe neutrals, a serif display face for headings, and translucent glass-card surfaces that soften into the canvas rather than sitting on top of it. The whole app shell inherits the currently active theme's CSS custom properties directly, so the editor's own mood shifts with whatever page theme the user has selected.\n\nA second, fixed register exists for system-level chrome that must read consistently regardless of the active page theme: modals are hardcoded to a dark slate palette independent of theme variables, so destructive or critical actions stay legible no matter how loud or pale the active page theme is.",
+    "keyCharacteristics": [
+      "Theme-variable-driven canvas chrome that follows the user's selected page theme",
+      "A separate, theme-independent dark-slate register for modals and system dialogs",
+      "Serif display type for headings, humanist sans for body/UI, script accents for decoration only",
+      "Glass-card surfaces as the default depth cue; hover brightens border color rather than deepening shadow",
+      "Quiet, utilitarian component feel — chrome recedes so the user's own page content stays the visual focus"
+    ],
+    "rules": [
+      { "name": "The Theme-Follows-Content Rule", "body": "The editor chrome is not a fixed brand skin — it reads its own colors from the same CSS custom properties the user's published page uses. Never hardcode a chrome color that should track the active theme.", "section": "colors" },
+      { "name": "The Dark-Slate Escape Hatch Rule", "body": "Modals and confirm dialogs use a fixed slate-900/950 surface with blue-600 (confirm) and amber-500 (warning) accents, opting out of theme-variable coloring so destructive actions read the same regardless of the active page theme.", "section": "colors" },
+      { "name": "The Script-Is-Garnish Rule", "body": "The script font never carries structural hierarchy or body copy — it only decorates an inline emphasis or a superimposed overlay.", "section": "typography" },
+      { "name": "The Border-Before-Shadow Rule", "body": "Interactive state on cards is communicated primarily by border color shifting to accent, with shadow deepening as a secondary cue, never the reverse.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do read chrome colors from the active theme's CSS custom properties rather than hardcoding a hex value.",
+      "Do keep modals and confirm dialogs on the fixed slate/blue/amber palette.",
+      "Do use border-color-to-accent as the primary hover signal on cards/tiles.",
+      "Do reserve the script font for a single decorative accent per surface."
+    ],
+    "donts": [
+      "Don't hardcode a theme-colored value directly in a new component — reference the CSS variable.",
+      "Don't introduce a new modal palette; extend the existing slate/blue/amber system.",
+      "Don't add drop-shadow-heavy lifted depth to editor chrome by default — lift is an explicit opt-in variant."
+    ]
+  }
+}
